@@ -229,7 +229,7 @@ def _process_includes_r(file_name, data, context):
         lookup_dict.update(included_data)
 
         try:
-            data = _merge_included_data(data, included_data)
+            data = merge_included_data(data, included_data)
         except TankError as e:
             raise TankError("Include error. Could not merge included references for %s: %s" % (file_name, e))
     # now go through our own data, recursively, and replace any refs.
@@ -243,7 +243,8 @@ def _process_includes_r(file_name, data, context):
     return data, fw_lookup
 
 
-def _merge_included_data(data, include_data):
+def merge_included_data(data, include_data):
+
     processed_data = {}
     for data_key in include_data:
         if data_key in data and data_key != constants.SINGLE_INCLUDE_SECTION and data_key != constants.MULTI_INCLUDE_SECTION:

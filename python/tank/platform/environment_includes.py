@@ -45,6 +45,7 @@ from ..util.includes import resolve_include
 
 log = LogManager.get_logger(__name__)
 
+
 def _resolve_includes(file_name, data, context):
     """
     Parses the includes section and returns a list of valid paths
@@ -54,11 +55,11 @@ def _resolve_includes(file_name, data, context):
 
     if constants.SINGLE_INCLUDE_SECTION in data:
         # single include section
-        includes.append( data[constants.SINGLE_INCLUDE_SECTION])
+        includes.append(data[constants.SINGLE_INCLUDE_SECTION])
 
     if constants.MULTI_INCLUDE_SECTION in data:
         # multi include section
-        includes.extend( data[constants.MULTI_INCLUDE_SECTION])
+        includes.extend(data[constants.MULTI_INCLUDE_SECTION])
 
     for include in includes:
 
@@ -82,7 +83,9 @@ def _resolve_includes(file_name, data, context):
             # which don't have a primary storage defined - this is logical since such
             # configurations cannot make use of references into the file system hierarchy
             # (because no such hierarchy exists)
-            primary_data_root = context.tank.pipeline_configuration.get_primary_data_root()
+            primary_data_root = (
+                context.tank.pipeline_configuration.get_primary_data_root()
+            )
 
             # try to construct a path object for each template
             try:
@@ -94,8 +97,10 @@ def _resolve_includes(file_name, data, context):
                 # Make a template
                 template = TemplatePath(include, template_keys, primary_data_root)
             except TankError as e:
-                raise TankError("Syntax error in %s: Could not transform include path '%s' "
-                                "into a template: %s" % (file_name, include, e))
+                raise TankError(
+                    "Syntax error in %s: Could not transform include path '%s' "
+                    "into a template: %s" % (file_name, include, e)
+                )
 
             # and turn the template into a path based on the context
             try:
@@ -117,7 +122,6 @@ def _resolve_includes(file_name, data, context):
     return resolved_includes
 
 
-
 def _resolve_refs_r(lookup_dict, data):
     """
     Scans data for @refs and attempts to replace based on lookup data
@@ -132,7 +136,7 @@ def _resolve_refs_r(lookup_dict, data):
 
     elif isinstance(data, dict):
         processed_val = {}
-        for (k,v) in data.items():
+        for (k, v) in data.items():
             processed_val[k] = _resolve_refs_r(lookup_dict, v)
 
     elif isinstance(data, basestring) and data.startswith("@"):
@@ -146,6 +150,7 @@ def _resolve_refs_r(lookup_dict, data):
         processed_val = copy.deepcopy(lookup_dict[ref_token])
 
     return processed_val
+
 
 def _resolve_frameworks(lookup_dict, data):
     """
@@ -180,6 +185,7 @@ def process_includes(file_name, data, context):
     data, _ = _process_includes_r(file_name, data, context)
     return data
 
+
 def _process_includes_r(file_name, data, context):
     """
     Recursively process includes for an environment file.
@@ -210,10 +216,14 @@ def _process_includes_r(file_name, data, context):
         included_data = g_yaml_cache.get(include_file) or {}
 
         # now resolve this data before proceeding
-        included_data, included_fw_lookup = _process_includes_r(include_file, included_data, context)
+        included_data, included_fw_lookup = _process_includes_r(
+            include_file, included_data, context
+        )
 
         # update our big lookup dict with this included data:
-        if "frameworks" in included_data and isinstance(included_data["frameworks"], dict):
+        if "frameworks" in included_data and isinstance(
+            included_data["frameworks"], dict
+        ):
             # special case handling of frameworks to merge them from the various
             # different included files rather than have frameworks section from
             # one file overwrite the frameworks from previous includes!
@@ -223,7 +233,7 @@ def _process_includes_r(file_name, data, context):
             for fw_name in included_data["frameworks"].keys():
                 fw_lookup[fw_name] = include_file
 
-            del(included_data["frameworks"])
+            del included_data["frameworks"]
 
         fw_lookup.update(included_fw_lookup)
         lookup_dict.update(included_data)
@@ -231,14 +241,19 @@ def _process_includes_r(file_name, data, context):
         try:
             data = merge_included_data(data, included_data)
         except TankError as e:
-            raise TankError("Include error. Could not merge included references for %s: %s" % (file_name, e))
+            raise TankError(
+                "Include error. Could not merge included references for %s: %s"
+                % (file_name, e)
+            )
     # now go through our own data, recursively, and replace any refs.
     # recurse down in dicts and lists
     try:
         data = _resolve_refs_r(lookup_dict, data)
         data = _resolve_frameworks(lookup_dict, data)
     except TankError as e:
-        raise TankError("Include error. Could not resolve references for %s: %s" % (file_name, e))
+        raise TankError(
+            "Include error. Could not resolve references for %s: %s" % (file_name, e)
+        )
 
     return data, fw_lookup
 
@@ -256,14 +271,21 @@ def merge_included_data(data, include_data):
     processed_data = {}
     for data_key in include_data:
         if data_key in data:
-            if data_key in (constants.SINGLE_INCLUDE_SECTION, constants.MULTI_INCLUDE_SECTION):
+            if data_key in (
+                constants.SINGLE_INCLUDE_SECTION,
+                constants.MULTI_INCLUDE_SECTION,
+            ):
                 continue
 
             source_data = data[data_key]
             child_data = include_data[data_key]
-            if isinstance(source_data, (list, dict)) and isinstance(child_data, (list, dict)):
+            if isinstance(source_data, (list, dict)) and isinstance(
+                child_data, (list, dict)
+            ):
                 try:
-                    processed_data[data_key] = _merge_included_data_r(source_data, child_data)
+                    processed_data[data_key] = _merge_included_data_r(
+                        source_data, child_data
+                    )
                 except TankError as err:
                     log.error("Could not merge data key: {}".format(data_key))
                     raise TankError("Could not merge data key: {}".format(data_key))
@@ -302,7 +324,9 @@ def _merge_included_data_r(data, include):
         processed_val = {}
         for (k, v) in current_data.items():
             if k in included_data:
-                _processed_val = _merge_included_data_r(current_data[k], included_data[k])
+                _processed_val = _merge_included_data_r(
+                    current_data[k], included_data[k]
+                )
                 processed_val[k] = _processed_val
             else:
                 processed_val[k] = v
@@ -426,8 +450,14 @@ def find_reference(file_name, context, token, absolute_location=False):
                     if constants.ENVIRONMENT_LOCATION_KEY in included_data[token]:
                         # Check to see if there's a location descriptor. If there
                         # is then we need to check to see if that's an include.
-                        location = included_data[token][constants.ENVIRONMENT_LOCATION_KEY]
-                        if location and isinstance(location, basestring) and location.startswith("@"):
+                        location = included_data[token][
+                            constants.ENVIRONMENT_LOCATION_KEY
+                        ]
+                        if (
+                            location
+                            and isinstance(location, basestring)
+                            and location.startswith("@")
+                        ):
                             include_token = location
 
                 # If we have an include we need to resolve, we take the current

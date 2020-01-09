@@ -244,13 +244,26 @@ def _process_includes_r(file_name, data, context):
 
 
 def merge_included_data(data, include_data):
+    """
+    Merge matching keys from include data into source data.
 
+    This will recursively work on data calling _merge_included_data_r.
+
+    :param dict data:            Current file's data.
+    :param dict include_data:    Data from the included file and it's children.
+    :returns:                    Resulting dictionary of recursively merged data.
+    """
     processed_data = {}
     for data_key in include_data:
-        if data_key in data and data_key != constants.SINGLE_INCLUDE_SECTION and data_key != constants.MULTI_INCLUDE_SECTION:
-            if isinstance(data[data_key], (list, dict)) and isinstance(include_data[data_key], (list, dict)):
+        if data_key in data:
+            if data_key in (constants.SINGLE_INCLUDE_SECTION, constants.MULTI_INCLUDE_SECTION):
+                continue
+
+            source_data = data[data_key]
+            child_data = include_data[data_key]
+            if isinstance(source_data, (list, dict)) and isinstance(child_data, (list, dict)):
                 try:
-                    processed_data[data_key] = _merge_included_data_r(data[data_key], include_data[data_key])
+                    processed_data[data_key] = _merge_included_data_r(source_data, child_data)
                 except TankError as err:
                     log.error("Could not merge data key: {}".format(data_key))
                     raise TankError("Could not merge data key: {}".format(data_key))
@@ -265,6 +278,18 @@ def merge_included_data(data, include_data):
 
 
 def _merge_included_data_r(data, include):
+    """
+    Internal recursive data merger.
+
+    Works on the rules of merging lists [*source, *include]
+
+    For dictionary it will recursively merge against itself, for keys
+      that only exist in the source or include, they are added verbetim.
+
+    :param Any data: Source data in any form
+    :param Any include: Included data ideally matching data types of source.
+    :returns: Any, Resulting merged data or source data if it could not be merged.
+    """
     current_data = data
     included_data = include
 
